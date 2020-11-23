@@ -4,11 +4,9 @@
 
 package org.mozilla.fenix.ui
 
+import android.view.View
 import androidx.core.net.toUri
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.hasMinimumChildCount
-import androidx.test.espresso.matcher.ViewMatchers.withId
+import androidx.test.espresso.IdlingRegistry
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import okhttp3.mockwebserver.MockWebServer
@@ -19,8 +17,9 @@ import org.junit.Test
 import org.mozilla.fenix.R
 import org.mozilla.fenix.helpers.AndroidAssetDispatcher
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RecyclerViewIdlingResource
 import org.mozilla.fenix.helpers.TestAssetHelper
-import org.mozilla.fenix.helpers.TestAssetHelper.waitingTime
+import org.mozilla.fenix.helpers.ViewVisibilityIdlingResource
 import org.mozilla.fenix.ui.robots.clickUrlbar
 import org.mozilla.fenix.ui.robots.homeScreen
 import org.mozilla.fenix.ui.robots.navigationToolbar
@@ -33,6 +32,8 @@ import org.mozilla.fenix.ui.robots.navigationToolbar
 class SmokeTest {
     private val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
     private lateinit var mockWebServer: MockWebServer
+    private var awesomeBar: ViewVisibilityIdlingResource? = null
+    private var searchSuggestionsIdlingResource: RecyclerViewIdlingResource? = null
 
     @get:Rule
     val activityTestRule = HomeActivityTestRule()
@@ -267,13 +268,17 @@ class SmokeTest {
         homeScreen {
         }.openNavigationToolbar {
             typeSearchTerm("mozilla")
-            mDevice.waitForIdle(waitingTime)
-            onView(withId(R.id.awesome_bar)).check(matches(hasMinimumChildCount(1)))
-//            searchSuggestionsIdlingResource =
-//                RecyclerViewIdlingResource(activityTestRule.activity.findViewById(R.id.awesome_bar), 1)
-//            IdlingRegistry.getInstance().register(searchSuggestionsIdlingResource!!)
-//            verifySearchSuggestionsAreMoreThan(1)
-            // IdlingRegistry.getInstance().unregister(searchSuggestionsIdlingResource!!)
+            Thread.sleep(10000)
+            awesomeBar = ViewVisibilityIdlingResource(
+                activityTestRule.activity.findViewById(R.id.awesome_bar),
+                View.VISIBLE
+            )
+            IdlingRegistry.getInstance().register(awesomeBar!!)
+            searchSuggestionsIdlingResource =
+                RecyclerViewIdlingResource(activityTestRule.activity.findViewById(R.id.awesome_bar), 1)
+            IdlingRegistry.getInstance().register(searchSuggestionsIdlingResource!!)
+            verifySearchSuggestionsAreMoreThan(1)
+            IdlingRegistry.getInstance().unregister(searchSuggestionsIdlingResource!!)
         }.goBack {
         }.openThreeDotMenu {
         }.openSettings {
@@ -283,13 +288,11 @@ class SmokeTest {
         }.goBack {
         }.openNavigationToolbar {
             typeSearchTerm("mozilla")
-//            searchSuggestionsIdlingResource =
-//                RecyclerViewIdlingResource(activityTestRule.activity.findViewById(R.id.awesome_bar))
-//            IdlingRegistry.getInstance().register(searchSuggestionsIdlingResource!!)
-            mDevice.waitForIdle(waitingTime)
-            onView(withId(R.id.awesome_bar)).check(matches(hasMinimumChildCount(0)))
-            // verifySearchSuggestionsAreEqualTo(0)
-            // IdlingRegistry.getInstance().unregister(searchSuggestionsIdlingResource!!)
+            searchSuggestionsIdlingResource =
+                RecyclerViewIdlingResource(activityTestRule.activity.findViewById(R.id.awesome_bar))
+            IdlingRegistry.getInstance().register(searchSuggestionsIdlingResource!!)
+            verifySearchSuggestionsAreEqualTo(0)
+            IdlingRegistry.getInstance().unregister(searchSuggestionsIdlingResource!!)
         }
     }
 }
